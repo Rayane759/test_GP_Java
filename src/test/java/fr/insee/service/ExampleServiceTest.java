@@ -1,4 +1,4 @@
-package fr.insee.service;
+package fr.insee.service.ExampleService;
 
 import org.junit.jupiter.api.Test;
 

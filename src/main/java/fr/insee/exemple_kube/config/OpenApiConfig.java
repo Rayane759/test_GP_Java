@@ -1,4 +1,4 @@
-package main.java.fr.insee.exemple_kube.config ;
+package fr.insee.exemple_kube.config ;
 
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
