@@ -1,4 +1,4 @@
-package fr.insee.exemple_kube.controller;
+package fr.insee.controller;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;

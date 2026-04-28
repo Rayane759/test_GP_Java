@@ -13,4 +13,10 @@ public class GlobalExceptionHandler {
     public String handleException(Exception ex) {
         return "Internal error";
     }
+
+    @ExceptionHandler(RuntimeException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public String handleNotFound(RuntimeException ex) {
+        return ex.getMessage();
+    }
 }
