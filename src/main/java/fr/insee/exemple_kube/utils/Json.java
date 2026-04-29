@@ -1,9 +1,9 @@
-package main.java.fr.insee.exemple_kube.utils;
+package fr.insee.exemple_kube.utils;
+
+import java.util.Iterator;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-
-import java.util.Iterator;
 
 public class Json {
     public static JsonNode mergePreserveMain(JsonNode mainNode, JsonNode updateNode) {

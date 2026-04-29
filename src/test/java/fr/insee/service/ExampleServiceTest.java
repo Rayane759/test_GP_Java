@@ -1,4 +1,7 @@
-package fr.insee.service;
+package fr.insee.exemple_kube.service;
+
+import fr.insee.exemple_kube.Application;
+import fr.insee.exemple_kube.service.ExampleService;
 
 import org.junit.jupiter.api.Test;
 
@@ -9,8 +12,10 @@ class ExampleServiceTest {
     private final ExampleService service = new ExampleService();
 
     @Test
-    void shouldProcess() {
-        String result = service.process();
-        assertThat(result).isEqualTo("processed");
+    void shouldCreateTask() {
+        Application task = service.create("Test task");
+
+        assertThat(task.getId()).isNotNull();
+        assertThat(task.getTitle()).isEqualTo("Test task");
     }
 }
