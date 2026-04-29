@@ -4,45 +4,74 @@ default:
   - docker
 
 stages:
-- build
-- docker
+- pre # GitLeaks
+- build # Maven
+- test # SAST, Dependancy Scanning et Container Scanning
+- quality # Maven (SonarQube)
+- security # Docker (Trivy)
+- package # Docker (Build)
 
+variables:
+  # Maven
+  MAVEN_OPTS: >-
+    -Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository -Dhttps.protocols=TLSv1.2
+  MAVEN_CLI_OPTS: >-
+    --batch-mode --errors --fail-at-end --show-version
+  # Docker
+  IMAGE_NAME: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
+
+# Workflow
+workflow:
+  rules:
+  - if: $CI_PIPELINE_SOURCE == "merge_request_event" # Déclenche la pipeline sur chaque de Merge Request
+  - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH # Déclenche la pipeline sur la branche par défaut (main)
+
+# COMPONENTS
 include:
-- project: "kubernetes/kubeapp/ci-templates"
-  ref: main
-  file:
-  - "images.yaml"
-  - "utils.yaml"
+  # Maven
+  - component: $CI_SERVER_FQDN/to-be-continuous/maven/gitlab-ci-maven@5.4.0 # TO BE CONTINUOUS
+    inputs:
+      # Image de la version Java choisie dans le Golden Path
+      image: docker.io/library/maven:3.9.9-eclipse-temurin-${{ values.javaVersion }}
+      project-dir: .
+      mvn-custom-goals: clean verify # Nettoie le build précédent, compile, teste et vérifie le projet
+      sonar-quality-gate-enabled: true
+      # deploy-enabled: false
 
-job_build:
-  stage: build
-  script:
-  - mvn clean verify
-  artifacts:
-    expire_in: 1 week
-    when: always # permet d'avoir le rapport même quand les tests échouent
-    paths:
-    - ./target/ROOT.jar
+  # Docker
+  - component: $CI_SERVER_FQDN/to-be-continuous/docker/gitlab-ci-docker@8.3.0 # TO BE CONTINUOUS
+    inputs:
+      build-tool: buildah
+      release-name: $IMAGE_NAME # Release ? Ou Snapshot ?
+      # Scan de vulnérabilités de l'image avec Trivy
+      healthcheck-disabled: false
+      trivy-image: BLABLA # ??????????????????????
+      trivy-disabled: false
 
-build-docker:
-  stage: docker
-  extends: .template:docker_build
-  variables:
-    PATH_TO_DOCKERFILE: Dockerfile
+  # GitLeaks (de https://gitlab.insee.fr/platform-engineering/templates/react-ts)
+  - component: gitlab.insee.fr/dsi/analyzer/composants/gitlab-ci-gitleaks-component/scan@1.0.0
+      inputs:
+        stage: pre
 
-test-docker:
-  stage: docker
-  extends: .template:docker_check
-  needs:
-  - build-docker
-  variables:
-    SEVERITY_LEVELS: HIGH,CRITICAL # valeurs possibles (les séparer par une virgule) : CRITICAL HIGH MEDIUM LOW
-  allow_failure: true
+  # Analyse statique
+  - template: Security/SAST.gitlab-ci.yml
 
-release-docker:
-  stage: docker
-  extends: .template:docker_push_internal
-  needs:
-  - build-docker
-  variables:
-    IMAGE_TAG: ${CI_COMMIT_SHORT_SHA}
+  # Détecte les CVE dans les dépendances du pom.xml
+  - template: Security/Dependency-Scanning.gitlab-ci.yml
+
+  # Scan de vulnérabilités de l'image
+  - template: Security/Container-Scanning.gitlab-ci.yml
+
+# # JOBS CUSTOM
+
+# # PRE — Détection de secrets dans le code
+# # GitLeaks scanne tout l'historique Git
+# gitleaks:
+#   stage: pre
+#   image: zricethezav/gitleaks:v8.18.0
+#   script:
+#   - gitleaks detect --source . --verbose --redact
+#   allow_failure: false # Bloquant : un secret commité est une faille critique
+#   rules:
+#   - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+#   - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
